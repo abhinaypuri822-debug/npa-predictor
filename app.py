@@ -1,6 +1,6 @@
 import streamlit as st
-import pickle
 import pandas as pd
+from joblib import load
 
 # -----------------------------
 # Page config
@@ -8,20 +8,32 @@ import pandas as pd
 st.set_page_config(page_title="NPA Dashboard", layout="wide")
 
 # -----------------------------
-# Custom CSS
+# Debug message
+# -----------------------------
+st.write("🚀 App started")
+
+# -----------------------------
+# Load model safely
+# -----------------------------
+try:
+    model = load("model.pkl")
+    st.write("✅ Model loaded successfully")
+except Exception as e:
+    st.error(f"❌ Model loading failed: {e}")
+    st.stop()
+
+# -----------------------------
+# Features
+# -----------------------------
+FEATURES = ['Loan_Growth', 'Net_Profit', 'Retail_Agri', 'CASA', 'Cost_Income']
+
+# -----------------------------
+# CSS Styling
 # -----------------------------
 st.markdown("""
 <style>
 .main {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: white;
-}
-
-.block-container {
-    padding-top: 2rem;
-}
-
-h1, h2, h3 {
     color: white;
 }
 
@@ -43,20 +55,8 @@ h1, h2, h3 {
 .low { background-color: #1abc9c; }
 .medium { background-color: #f39c12; }
 .high { background-color: #e74c3c; }
-
-.sidebar .sidebar-content {
-    background-color: #111;
-}
 </style>
 """, unsafe_allow_html=True)
-
-# -----------------------------
-# Load model
-# -----------------------------
-with open("model.pkl", "rb") as f:
-    model = pickle.load(f)
-
-FEATURES = ['Loan_Growth', 'Net_Profit', 'Retail_Agri', 'CASA', 'Cost_Income']
 
 # -----------------------------
 # Sidebar Inputs
@@ -70,7 +70,7 @@ casa = st.sidebar.slider("CASA Ratio (%)", 20.0, 50.0, 33.0)
 cost_income = st.sidebar.slider("Cost to Income (%)", 40.0, 60.0, 48.0)
 
 # -----------------------------
-# Header
+# Title
 # -----------------------------
 st.title("📊 NPA Risk Dashboard")
 st.write("Analyze credit risk using financial indicators")
@@ -91,29 +91,32 @@ col5.markdown(f"<div class='metric-box'>Cost/Income<br><b>{cost_income}%</b></di
 # -----------------------------
 if st.button("🚀 Analyze Risk"):
 
-    input_df = pd.DataFrame([[
-        loan_growth,
-        net_profit,
-        retail_agri,
-        casa,
-        cost_income
-    ]], columns=FEATURES)
+    try:
+        input_df = pd.DataFrame([[
+            loan_growth,
+            net_profit,
+            retail_agri,
+            casa,
+            cost_income
+        ]], columns=FEATURES)
 
-    prediction = model.predict(input_df)[0]
+        prediction = model.predict(input_df)[0]
 
-    # Risk classification
-    if prediction < 2:
-        risk = "Low Risk"
-        cls = "low"
-    elif prediction < 3:
-        risk = "Moderate Risk"
-        cls = "medium"
-    else:
-        risk = "High Risk"
-        cls = "high"
+        # Risk classification
+        if prediction < 2:
+            risk = "Low Risk"
+            cls = "low"
+        elif prediction < 3:
+            risk = "Moderate Risk"
+            cls = "medium"
+        else:
+            risk = "High Risk"
+            cls = "high"
 
-    # Result box
-    st.markdown(
-        f"<div class='result-box {cls}'>Predicted NPA: {prediction:.2f}%<br>{risk}</div>",
-        unsafe_allow_html=True
-    )
+        st.markdown(
+            f"<div class='result-box {cls}'>Predicted NPA: {prediction:.2f}%<br>{risk}</div>",
+            unsafe_allow_html=True
+        )
+
+    except Exception as e:
+        st.error(f"❌ Prediction failed: {e}")
